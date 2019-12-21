@@ -37,6 +37,7 @@ class Block:
         self.chainwork=response['chainwork'] if 'chainwork' in response else None
         self.nTx=response['nTx'] if 'nTx' in response else None
         self.previousblockhash=response['previousblockhash'] if 'previousblockhash' in response else None
+        self.nextblockhash=response['nextblockhash'] if 'nextblockhash' in response else None
     
     def save(self,database):
         """
@@ -47,7 +48,7 @@ class Block:
         # Saves one block in database and commits.
         with database: # Sends commit after execution.
             database.execute(
-                "insert into block values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "insert into block values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                 None,
                 self.hash,
@@ -67,7 +68,8 @@ class Block:
                 self.difficulty,
                 self.chainwork,
                 self.nTx,
-                self.previousblockhash)
+                self.previousblockhash,
+                self.nextblockhash)
                 )
         
 def get_last_n_blocks(client,n):
@@ -75,6 +77,7 @@ def get_last_n_blocks(client,n):
     Function to retreive last n block from client node.
     Function arguments:
                         client -> client bitcoin node, e.g. ( blockchain.oss.unist.hr )
+                        n      -> number of blocks to retrive
     """
 
     # Connect to local Database
@@ -92,17 +95,34 @@ def get_last_n_blocks(client,n):
 
     db.close()
 
-def get_n_blocks(client,n):
-    genesis_hash='000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943'
+def get_n_blocks_from_start(client,n):
+    """
+    Function to retreive first n block from client node.
+    Function arguments:
+                        client -> client bitcoin node, e.g. ( blockchain.oss.unist.hr )
+                        n      -> number of blocks to retrive
+    """
 
+    # Connect to local Database
+    db=sqlite3.connect('blockchain.db')
+
+    # Get genesis block
+    block=Block(client.getblock(client.getblockhash(0)))
+    block.save(db)
+
+    # Save last n blocks
+    for i in range(n):
+            block=Block(client.getblock(block.nextblockhash))
+            block.save(db)
+
+    db.close()
 
 def main():
     
     # Connect to blockchain.oss.unist.hr
     client=AuthServiceProxy('http://student:WYVyF5DTERJASAiIiYGg4UkRH@blockchain.oss.unist.hr:8332')
     get_last_n_blocks(client,10)
-    
-
+    get_n_blocks_from_start(client,10)
 
 if __name__=='__main__':
     main()
