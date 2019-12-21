@@ -1,6 +1,7 @@
 from bitcoinrpc.authproxy import AuthServiceProxy
 import sqlite3
 
+
 class Block:
     
     '''
@@ -69,10 +70,12 @@ class Block:
                 self.previousblockhash)
                 )
         
-def main():
-    
-    # Connect to blockchain.oss.unist.hr
-    client=AuthServiceProxy('http://student:WYVyF5DTERJASAiIiYGg4UkRH@blockchain.oss.unist.hr:8332')
+def get_last_n_blocks(client,n):
+    """
+    Function to retreive last n block from client node.
+    Function arguments:
+                        client -> client bitcoin node, e.g. ( blockchain.oss.unist.hr )
+    """
 
     # Connect to local Database
     db=sqlite3.connect('blockchain.db')
@@ -88,6 +91,17 @@ def main():
             block.save(db)
 
     db.close()
+
+def get_n_blocks(client,n):
+    genesis_hash='000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943'
+
+
+def main():
+    
+    # Connect to blockchain.oss.unist.hr
+    client=AuthServiceProxy('http://student:WYVyF5DTERJASAiIiYGg4UkRH@blockchain.oss.unist.hr:8332')
+    get_last_n_blocks(client,10)
+    
 
 
 if __name__=='__main__':
