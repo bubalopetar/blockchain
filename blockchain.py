@@ -1,77 +1,25 @@
+import block
 from bitcoinrpc.authproxy import AuthServiceProxy
 import sqlite3
 
+DATABASE='blockchain.db'
+CLIENT_URL= 'http://student:WYVyF5DTERJASAiIiYGg4UkRH@blockchain.oss.unist.hr:8332'
 
-class Block:
-    
+def get_all_blocks(client):
     '''
-    fields=[
-        'hash','confirmations','strippedsize','size','weight','height',
-        'version','versionHex','merkleroot','tx','time','mediantime'
-        'nonce','bits','difficulty','chainwork','nTx','previousblockhash'
-        ]
+    Function to retrieve block starting from genesis.
     '''
 
-    def __init__(self,response):
-        """
-        Initializatio of Block element.
-        Function arguments:
-                            response -> dictionary structure received from blockchain.oss.unist.hr with API getblock() function.
+    db=sqlite3.connect(DATABASE)
+    block=Block(client.getblock(client.getblockhash(1)))
+    block.save(db)
 
-        """
-        self.hash=response['hash'] if 'hash' in response else None
-        self.confirmations=response['confirmations'] if 'confirmations' in response else None
-        self.strippedsize=response['strippedsize'] if 'strippedsize' in response else None
-        self.size=response['size'] if 'size' in response else None
-        self.weight=response['weight'] if 'weight' in response else None
-        self.height=response['height'] if 'height' in response else None
-        self.version=response['version'] if 'version' in response else None
-        self.versionHex=response['versionHex'] if 'versionHex' in response else None
-        self.merkleroot=response['merkleroot'] if 'merkleroot' in response else None
-        self.tx=response['tx'] if 'tx' in response else None
-        self.time=response['time'] if 'time' in response else None
-        self.mediantime=response['mediantime'] if 'mediantime' in response else None
-        self.nonce=response['nonce'] if 'nonce' in response else None
-        self.bits=response['bits'] if 'bits' in response else None
-        self.difficulty=response['difficulty'] if 'difficulty' in response else None
-        self.chainwork=response['chainwork'] if 'chainwork' in response else None
-        self.nTx=response['nTx'] if 'nTx' in response else None
-        self.previousblockhash=response['previousblockhash'] if 'previousblockhash' in response else None
-        self.nextblockhash=response['nextblockhash'] if 'nextblockhash' in response else None
-    
-    def save(self,database):
-        """
-        Function saves block element to local database. Database file must be in same directory as script.
-        Function argument:
-                            database -> local database filename
-        """
-        # Saves one block in database and commits.
-        with database: # Sends commit after execution.
-            database.execute(
-                "insert into block values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                None,
-                self.hash,
-                self.confirmations,
-                self.strippedsize,
-                self.size,
-                self.weight,
-                self.height,
-                self.version,
-                self.versionHex,
-                self.merkleroot,
-                str(self.tx),
-                self.time,
-                self.mediantime,
-                self.nonce,
-                self.bits,
-                self.difficulty,
-                self.chainwork,
-                self.nTx,
-                self.previousblockhash,
-                self.nextblockhash)
-                )
-        
+    while block.nextblockhash:
+        block=Block(client.getblock(block.nextblockhash))
+        block.save(db)
+            
+    db.close()
+
 def get_last_n_blocks(client,n):
     """
     Function to retreive last n block from client node.
@@ -81,7 +29,7 @@ def get_last_n_blocks(client,n):
     """
 
     # Connect to local Database
-    db=sqlite3.connect('blockchain.db')
+    db=sqlite3.connect(DATABASE)
 
 
     # Get last block in blockchain
@@ -104,7 +52,7 @@ def get_n_blocks_from_start(client,n):
     """
 
     # Connect to local Database
-    db=sqlite3.connect('blockchain.db')
+    db=sqlite3.connect(DATABASE)
 
     # Get genesis block
     block=Block(client.getblock(client.getblockhash(0)))
@@ -120,9 +68,14 @@ def get_n_blocks_from_start(client,n):
 def main():
     
     # Connect to blockchain.oss.unist.hr
-    client=AuthServiceProxy('http://student:WYVyF5DTERJASAiIiYGg4UkRH@blockchain.oss.unist.hr:8332')
-    get_last_n_blocks(client,10)
-    get_n_blocks_from_start(client,10)
+    client=AuthServiceProxy(CLIENT_URL)
+
+    #get_last_n_blocks(client,10)
+    #get_n_blocks_from_start(client,10)
+    #get_all_blocks(client)
+    
+    #print(len(client.getblock(client.getbestblockhash(),2)['tx']))
+
 
 if __name__=='__main__':
     main()
