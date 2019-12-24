@@ -31,7 +31,7 @@ def get_blocks(client,n=0):
         while block.nextblockhash:
             block=Block(client.getblock(block.nextblockhash))
             block.save(db)
-            sg.PopupAnimated('loading.gif')
+            sg.PopupAnimated('./graphic/loading.gif')
         sg.PopupAnimated(None)
         db.close()
 
@@ -40,7 +40,7 @@ def get_blocks(client,n=0):
         for i in range(n-1):
             block=Block(client.getblock(block.nextblockhash))
             block.save(db)
-            sg.PopupAnimated('loading.gif')
+            sg.PopupAnimated('./graphic/loading.gif')
         sg.PopupAnimated(None)
         db.close()
             
@@ -57,18 +57,37 @@ def get_last_n_blocks(client,n):
     db=sqlite3.connect(DATABASE)
 
 
-    # Get last block in blockchain
-    block=Block(client.getblock(client.getbestblockhash()))
+    # Get last - n block in blockchain starting from n to end
+    block=Block(client.getblock( client.getblockhash( client.getblockcount()-n ) ))
     block.save(db)
 
     # Save last n blocks
     for i in range(n):
-            block=Block(client.getblock(block.previousblockhash))
+            block=Block(client.getblock(block.nextblockhash))
             block.save(db)
             sg.PopupAnimated('loading.gif')
     sg.PopupAnimated(None)
 
     db.close()
+
+def read_blocks_from_database():
+    """
+    Read blocks from database.
+    Returns array of blocks.
+    """
+    # Connect to database
+    db=sqlite3.connect(DATABASE)
+
+    # Get all data and column names
+    data=db.execute('select * from block')
+    data=data.fetchall()
+    columns=[
+        'ID','hash','confirmations','strippedsize','size','weight','height',
+        'version','versionHex','merkleroot','tx','time','mediantime',
+        'nonce','bits','difficulty','chainwork','nTx','previousblockhash','nextblockhash'
+        ]
+    return data,columns
+    
 
 def layout():
     '''
@@ -77,14 +96,43 @@ def layout():
 
     sg.change_look_and_feel('Light Blue 6')
 
-    layout = [  
-            [sg.Text('Database:'), sg.Text(DATABASE)],
-            [sg.Text('Client Node:'), sg.Text(CLIENT_URL)],
-            [sg.Text('Number of blocks to download (enter 0 to download whole blockchain)'),
-            sg.Spin([i for i in range(1,10^5)], initial_value=1,size=(10,1)),
-            sg.Checkbox('From latest block')],
-            [sg.Button('Download blocks!')] 
+    # Download tab
+    tab1=  [
+            [
+                sg.T(' ')
+            ],
+            [
+                sg.Frame('Info',layout=[
+                        [sg.Text('Database:'), sg.Text(DATABASE)],
+                        [sg.Text('Client Node:'), sg.Text(CLIENT_URL)]
+                        ]
+                    )
+            ],
+            [
+                sg.T(' ')
+            ],
+            [
+                sg.Text('Number of blocks to download (enter 0 to download whole blockchain)'),
+                sg.Spin([i for i in range(1,10^5)], initial_value=1,size=(10,1))
+            ],
+            [
+                sg.Checkbox('Download last n blocks'),sg.Button('Download blocks!')
+            ]
+        
     ]
+
+    data,columns=read_blocks_from_database()
+    # If there is no data in database
+    if len(data)==0:
+        data=[[' ' for i in range(len(columns))]]
+
+    # Database tab
+    tab2= [
+        [sg.Table(values=data,headings= columns,vertical_scroll_only=False,key='table')]
+    ]    
+
+    # General layout
+    layout = [[sg.TabGroup([[sg.Tab('Download', tab1, tooltip='tip',key='tab1'), sg.Tab('Database',tab2,key='tab2')]], tooltip='TIP2')]]  
 
     return layout
 
@@ -94,7 +142,9 @@ def main():
     client=AuthServiceProxy(CLIENT_URL)
 
     # Create GUI window.
-    window=sg.Window('Blockchain',layout(),icon='blockchain.ico',)
+    window=sg.Window('Blockchain',layout(),icon='./graphic/blockchain.ico',resizable=True,size=(600,250))
+
+    #print(read_blocks_from_database())
 
     while True:
         event, values = window.read()
@@ -105,15 +155,20 @@ def main():
             # Retrive number of blocks from input
             n=int(values[0]) 
 
-            # Start downloading from latest block
+            # Download last n blocks
             if values[1]==True:
                 get_last_n_blocks(client,n)
+                window.FindElement('table').Update(values=read_blocks_from_database()[0])
+                
             
             # Start downloading from genesis block
             else:
                 get_blocks(client,n)
+                window.FindElement('table').Update(values=read_blocks_from_database()[0])
+
 
     window.close()
+    
 
 if __name__=='__main__':
     main()
