@@ -44,7 +44,6 @@ def get_blocks(client,n=0):
         sg.PopupAnimated(None)
         db.close()
             
-
 def get_last_n_blocks(client,n):
     """
     Function to retreive last n block from client node.
@@ -87,7 +86,20 @@ def read_blocks_from_database():
         'nonce','bits','difficulty','chainwork','nTx','previousblockhash','nextblockhash'
         ]
     return data,columns
-    
+
+def delete_blocks():
+    '''
+    Clears blocks table.
+    '''
+
+    # Connect to database
+    db=sqlite3.connect(DATABASE)
+    with db:
+        db.execute('DELETE FROM block')
+    db.close()
+
+    return True;
+
 
 def layout():
     '''
@@ -128,6 +140,7 @@ def layout():
 
     # Database tab
     tab2= [
+        [sg.Button('Empty Database',size=(1000,1))],
         [sg.Table(values=data,headings= columns,vertical_scroll_only=False,key='table')]
     ]    
 
@@ -159,12 +172,15 @@ def main():
             if values[1]==True:
                 get_last_n_blocks(client,n)
                 window.FindElement('table').Update(values=read_blocks_from_database()[0])
-                
             
             # Start downloading from genesis block
             else:
                 get_blocks(client,n)
                 window.FindElement('table').Update(values=read_blocks_from_database()[0])
+
+        elif event == 'Empty Database':
+            delete_blocks()
+            window.FindElement('table').Update(values=read_blocks_from_database()[0])
 
 
     window.close()
