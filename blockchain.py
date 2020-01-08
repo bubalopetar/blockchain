@@ -3,7 +3,6 @@ from bitcoinrpc.authproxy import AuthServiceProxy
 import sqlite3
 import PySimpleGUI as sg
 
-
 DATABASE='blockchain.db'
 CLIENT_URL= 'http://student:WYVyF5DTERJASAiIiYGg4UkRH@blockchain.oss.unist.hr:8332'
 
@@ -55,7 +54,6 @@ def get_last_n_blocks(client,n):
     # Connect to local Database
     db=sqlite3.connect(DATABASE)
 
-
     # Get last - n block in blockchain starting from n to end
     block=Block(client.getblock( client.getblockhash( client.getblockcount()-n ) ))
     block.save(db)
@@ -64,7 +62,7 @@ def get_last_n_blocks(client,n):
     for i in range(n):
             block=Block(client.getblock(block.nextblockhash))
             block.save(db)
-            sg.PopupAnimated('loading.gif')
+            sg.PopupAnimated('./graphic/loading.gif')
     sg.PopupAnimated(None)
 
     db.close()
@@ -98,7 +96,7 @@ def delete_blocks():
         db.execute('DELETE FROM block')
     db.close()
 
-    return True;
+    return True
 
 
 def layout():
@@ -115,8 +113,8 @@ def layout():
             ],
             [
                 sg.Frame('Info',layout=[
-                        [sg.Text('Database:'), sg.Text(DATABASE)],
-                        [sg.Text('Client Node:'), sg.Text(CLIENT_URL)]
+                        [sg.Text('Database:   '), sg.InputText(default_text=DATABASE,enable_events=True,key='Database',size=(500,1))],
+                        [sg.Text('Client Node:'),sg.InputText(default_text=CLIENT_URL,enable_events=True,key='Client Node',size=(500,1))]
                         ]
                     )
             ],
@@ -140,8 +138,10 @@ def layout():
 
     # Database tab
     tab2= [
-        [sg.Button('Empty Database',size=(1000,1))],
-        [sg.Table(values=data,headings= columns,vertical_scroll_only=False,key='table')]
+        
+        [sg.Table(values=data,headings= columns,key='table',num_rows=7,vertical_scroll_only=False)],
+        [sg.Button('Empty Database',size=(1000,1))]
+        
     ]    
 
     # General layout
@@ -150,14 +150,15 @@ def layout():
     return layout
 
 def main():
+
+    global CLIENT_URL
+    global DATABASE
     
     # Connect to blockchain.oss.unist.hr
     client=AuthServiceProxy(CLIENT_URL)
 
     # Create GUI window.
-    window=sg.Window('Blockchain',layout(),icon='./graphic/blockchain.ico',resizable=True,size=(600,250))
-
-    #print(read_blocks_from_database())
+    window=sg.Window('Blockchain',layout(),icon='./graphic/blockchain.ico',resizable=True,size=(660,250))
 
     while True:
         event, values = window.read()
@@ -181,10 +182,14 @@ def main():
         elif event == 'Empty Database':
             delete_blocks()
             window.FindElement('table').Update(values=read_blocks_from_database()[0])
-
+        
+        elif event=="Client Node":
+            CLIENT_URL=values['Client Node'].strip()
+        
+        elif event=="Database":
+            DATABASE=values['Database'].strip()
 
     window.close()
     
-
 if __name__=='__main__':
     main()
