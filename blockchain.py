@@ -98,7 +98,6 @@ def delete_blocks():
 
     return True
 
-
 def layout():
     '''
     Design of window layout. Returns layout variable
