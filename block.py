@@ -29,7 +29,7 @@ class Block:
         self.mediantime=response['mediantime'] if 'mediantime' in response else None
         self.nonce=response['nonce'] if 'nonce' in response else None
         self.bits=response['bits'] if 'bits' in response else None
-        self.difficulty=response['difficulty'] if 'difficulty' in response else None
+        self.difficulty=int(response['difficulty']) if 'difficulty' in response else None
         self.chainwork=response['chainwork'] if 'chainwork' in response else None
         self.nTx=response['nTx'] if 'nTx' in response else None
         self.previousblockhash=response['previousblockhash'] if 'previousblockhash' in response else None

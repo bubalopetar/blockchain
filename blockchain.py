@@ -2,6 +2,7 @@ from block import Block
 from bitcoinrpc.authproxy import AuthServiceProxy
 import sqlite3
 import PySimpleGUI as sg
+import functools
 
 DATABASE='blockchain.db'
 CLIENT_URL= 'http://student:WYVyF5DTERJASAiIiYGg4UkRH@blockchain.oss.unist.hr:8332'
@@ -16,33 +17,35 @@ def get_blocks(client,n=0):
     db=sqlite3.connect(DATABASE)
 
     # Firstly save genesis block
-    block=Block(client.getblock(client.getblockhash(0)))
-    block.save(db)
+    block=error_decorator(Block)((error_decorator(client.getblock)(error_decorator(client.getblockhash)(0))))
 
-    # If only one element is selected.
-    if n==1:
-        db.close()
-        return
+    if block != Exception:
+        block.save(db)
 
-    # If n is not selected, download whole blockchain
-    if n==0:
-        # Go through nexblockhash and save blocks
-        while block.nextblockhash:
-            block=Block(client.getblock(block.nextblockhash))
-            block.save(db)
-            sg.PopupAnimated('./graphic/loading.gif')
-        sg.PopupAnimated(None)
-        db.close()
+        # If only one element is selected.
+        if n==1:
+            db.close()
+            return
 
-    # Download n of blocks.
-    else:
-        for i in range(n-1):
-            block=Block(client.getblock(block.nextblockhash))
-            block.save(db)
-            sg.PopupAnimated('./graphic/loading.gif')
-        sg.PopupAnimated(None)
-        db.close()
-            
+        # If n is not selected, download whole blockchain
+        if n==0:
+            # Go through nexblockhash and save blocks
+            while block.nextblockhash:
+                block=Block(client.getblock(block.nextblockhash))
+                block.save(db)
+                sg.PopupAnimated('./graphic/loading.gif')
+            sg.PopupAnimated(None)
+            db.close()
+
+        # Download n of blocks.
+        else:
+            for i in range(n-1):
+                block=Block(client.getblock(block.nextblockhash))
+                block.save(db)
+                sg.PopupAnimated('./graphic/loading.gif')
+            sg.PopupAnimated(None)
+            db.close()
+                
 def get_last_n_blocks(client,n):
     """
     Function to retreive last n block from client node.
@@ -56,7 +59,9 @@ def get_last_n_blocks(client,n):
 
     # Get last - n block in blockchain starting from n to end
     block=Block(client.getblock( client.getblockhash( client.getblockcount()-n ) ))
+    print(block)
     block.save(db)
+
 
     # Save last n blocks
     for i in range(n):
@@ -138,7 +143,7 @@ def layout():
     # Database tab
     tab2= [
         
-        [sg.Table(values=data,headings= columns,key='table',num_rows=7,vertical_scroll_only=False)],
+        [sg.Table(values=data,headings= columns,key='table',num_rows=7,vertical_scroll_only=False,bind_return_key=True,enable_events=True)],
         [sg.Button('Empty Database',size=(1000,1))]
         
     ]    
@@ -147,6 +152,41 @@ def layout():
     layout = [[sg.TabGroup([[sg.Tab('Download', tab1, tooltip='tip',key='tab1'), sg.Tab('Database',tab2,key='tab2')]], tooltip='TIP2')]]  
 
     return layout
+
+def handle_table_click(row,client):
+    # Connect to database
+    db=sqlite3.connect(DATABASE)
+
+
+    # Get all data and column names
+    data=db.execute('select * from block')
+    block_hash=data.fetchall()[row][1]
+
+    stats=error_decorator(client.getblockstats)(block_hash) 
+
+    if stats != Exception:
+        output_peer_string = ''
+        
+        for key, item in stats.items():
+            output_peer_string += str(key) + ' : ' + str(item).replace('{','').replace('}','').replace("'",'').replace(',',', ').title()+'\n'
+        
+        sg.popup(output_peer_string,title='Statistics',icon='./graphic/blockchain.ico')
+        
+# Decorator for showing errors
+def error_decorator(func):
+    
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+
+        try:
+            stats=func(*args,**kwargs)
+            return stats
+
+        except Exception as er:
+            sg.popup(er,title='Error',icon='./graphic/blockchain.ico')
+            return Exception
+            
+    return inner
 
 def main():
 
@@ -187,6 +227,10 @@ def main():
         
         elif event=="Database":
             DATABASE=values['Database'].strip()
+        
+        elif event=='table':
+            row=values['table'][0]
+            handle_table_click(row,client)
 
     window.close()
     
